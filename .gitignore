@@ -88,3 +88,4 @@ DerivedDataCache/*
 .ignore
 .vscode/launch.json
 .vscode/tasks.json
+.vsconfig
