@@ -14,4 +14,6 @@ class HERA_API AHeraGameModeBase : public AGameModeBase
 {
 	GENERATED_BODY()
 	
+public:
+	AHeraGameModeBase();
 };

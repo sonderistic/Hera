@@ -15,15 +15,31 @@ public:
 	AMarksmanCharacter();
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
+	class USpringArmComponent* CameraBoom;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
+	class UCameraComponent* FollowCamera;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
+	class USceneComponent* SceneComponent;
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-private:
-	UPROPERTY(VisibleAnywhere, Category = Camera)
-	class USpringArmComponent* CameraBoom;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enhanced Input")
+    class UInputMappingContext* InputMapping;
 
-	UPROPERTY(VisibleAnywhere, Category = Camera)
-	class UCameraComponent* FollowCamera;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enhanced Input")
+	class UInputDataAsset* InputDataAsset;
+
+	void MoveAction(const struct FInputActionValue& Value);
+	void MoveCompletedAction(const struct FInputActionValue& Value);
+	void JumpAction(const FInputActionValue& Value);
+	
+	APlayerController* PlayerController;
+	UCharacterMovementComponent* CharacterMovementComponent;
+
+private:
+	FVector LastClickedLocation;
 };
