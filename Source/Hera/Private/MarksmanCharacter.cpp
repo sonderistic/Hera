@@ -86,6 +86,7 @@ void AMarksmanCharacter::MoveAction(const FInputActionValue& Value)
 	if (IsMove &&
 		PlayerController->GetHitResultUnderCursor(ECC_Visibility, true, TraceHitResult))
 	{
+		PlayerController->StopMovement();
 		LastClickedLocation = TraceHitResult.Location;
 		APawn::AddMovementInput(LastClickedLocation - GetActorLocation());
 	}
@@ -112,7 +113,7 @@ void AMarksmanCharacter::JumpAction(const FInputActionValue& Value)
 	bool IsJump = Value.Get<bool>();
 	if (IsJump)
 	{
-
+		ACharacter::Jump();
 	}
 }
 
