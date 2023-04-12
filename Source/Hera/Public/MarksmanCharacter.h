@@ -34,6 +34,7 @@ protected:
 	class UInputDataAsset* InputDataAsset;
 
 	void MoveAction(const struct FInputActionValue& Value);
+	void MoveStartedAction(const FInputActionValue& Value); 
 	void MoveCompletedAction(const struct FInputActionValue& Value);
 	void JumpAction(const FInputActionValue& Value);
 	

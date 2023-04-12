@@ -25,6 +25,19 @@ AMarksmanCharacter::AMarksmanCharacter()
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+
+	// Don't rotate character to camera direction
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationRoll = false;
+	
+	// Configure character movement
+	CharacterMovementComponent = GetCharacterMovement(); // Rotate character to moving direction
+	CharacterMovementComponent->bOrientRotationToMovement = true;
+	CharacterMovementComponent->RotationRate = FRotator(0.f, 640.f, 0.f);
+	CharacterMovementComponent->bConstrainToPlane = true;
+	CharacterMovementComponent->bSnapToPlaneAtStart = true;
+	
 }
 
 // Called when the game starts or when spawned
@@ -39,22 +52,11 @@ void AMarksmanCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
+// TODO: Setup player input in a PlayerController
 // Called to bind functionality to input
 void AMarksmanCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
-	// Don't rotate character to camera direction
-	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = false;
-	bUseControllerRotationRoll = false;
-
-	// Configure character movement
-	CharacterMovementComponent = GetCharacterMovement(); // Rotate character to moving direction
-	CharacterMovementComponent->bOrientRotationToMovement = true;
-	CharacterMovementComponent->RotationRate = FRotator(0.f, 640.f, 0.f);
-	CharacterMovementComponent->bConstrainToPlane = true;
-	CharacterMovementComponent->bSnapToPlaneAtStart = true;
 
 	// Get the player controller
     PlayerController = Cast<APlayerController>(GetController());
@@ -71,6 +73,8 @@ void AMarksmanCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
     // Bind the actions
     PEI->BindAction(InputDataAsset->InputMove, ETriggerEvent::Triggered, this, &AMarksmanCharacter::MoveAction);
 	PEI->BindAction(InputDataAsset->InputMove, ETriggerEvent::Completed, this, &AMarksmanCharacter::MoveCompletedAction);
+	PEI->BindAction(InputDataAsset->InputMove, ETriggerEvent::Canceled, this, &AMarksmanCharacter::MoveCompletedAction);
+	PEI->BindAction(InputDataAsset->InputMove, ETriggerEvent::Started, this, &AMarksmanCharacter::MoveStartedAction);
 	PEI->BindAction(InputDataAsset->InputJump, ETriggerEvent::Triggered, this, &AMarksmanCharacter::JumpAction);
 }
 
@@ -86,10 +90,20 @@ void AMarksmanCharacter::MoveAction(const FInputActionValue& Value)
 	if (IsMove &&
 		PlayerController->GetHitResultUnderCursor(ECC_Visibility, true, TraceHitResult))
 	{
-		PlayerController->StopMovement();
 		LastClickedLocation = TraceHitResult.Location;
-		APawn::AddMovementInput(LastClickedLocation - GetActorLocation());
+		FVector WorldDirection = (LastClickedLocation - GetActorLocation()).GetSafeNormal();
+		APawn::AddMovementInput(WorldDirection);
 	}
+}
+
+void AMarksmanCharacter::MoveStartedAction(const FInputActionValue& Value)
+{
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	PlayerController->StopMovement();
 }
 
 void AMarksmanCharacter::MoveCompletedAction(const FInputActionValue& Value) 
