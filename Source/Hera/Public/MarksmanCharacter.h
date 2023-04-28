@@ -36,11 +36,16 @@ protected:
 	void MoveAction(const struct FInputActionValue& Value);
 	void MoveStartedAction(const FInputActionValue& Value); 
 	void MoveCompletedAction(const struct FInputActionValue& Value);
-	void JumpAction(const FInputActionValue& Value);
 	
 	APlayerController* PlayerController;
 	UCharacterMovementComponent* CharacterMovementComponent;
 
 private:
 	FVector LastClickedLocation;
+	bool MoveStarted;
+	bool IsSprinting;
+	float MaxWalkSpeed = 300.f;
+	float DefaultWalkSpeed = 200.f;
+	float InterpolationSpeed = 4.f;
+	float MoveElapsedSeconds;
 };

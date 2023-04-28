@@ -27,9 +27,27 @@ void UMarksmanAnimInstance::NativeUpdateAnimation(float DeltaTime)
 
     FVector Velocity = MarksmanCharacter->GetVelocity();
     Velocity.Z = 0.f;
-    Speed = Velocity.Size();
 
+    if (Velocity.Size() > 3)
+    {
+        Speed = Velocity.Size();
+    }
+    else
+    {
+        Speed = 0;
+    }
+    /*
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(
+            -1,
+            2,
+            FColor::Yellow,
+            FString::Printf(TEXT("Speed %f"), Speed)
+        );
+    }
+*/
     bIsInAir = MarksmanCharacter->GetCharacterMovement()->IsFalling();
     
-    bIsAccelerating = MarksmanCharacter->GetCharacterMovement()->GetCurrentAcceleration().Size() > 0 ? true : false; 
+    bIsAccelerating = MarksmanCharacter->GetCharacterMovement()->GetCurrentAcceleration().Size() > 3 ? true : false; 
 }

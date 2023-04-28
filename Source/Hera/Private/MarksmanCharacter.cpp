@@ -13,6 +13,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "NavigationSystem.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "NavigationSystem.h"
 
 // Sets default values
 AMarksmanCharacter::AMarksmanCharacter()
@@ -37,19 +39,12 @@ AMarksmanCharacter::AMarksmanCharacter()
 	CharacterMovementComponent->RotationRate = FRotator(0.f, 640.f, 0.f);
 	CharacterMovementComponent->bConstrainToPlane = true;
 	CharacterMovementComponent->bSnapToPlaneAtStart = true;
-	
 }
 
 // Called when the game starts or when spawned
 void AMarksmanCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-}
-
-// Called every frame
-void AMarksmanCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
 }
 
 // TODO: Setup player input in a PlayerController
@@ -75,59 +70,121 @@ void AMarksmanCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	PEI->BindAction(InputDataAsset->InputMove, ETriggerEvent::Completed, this, &AMarksmanCharacter::MoveCompletedAction);
 	PEI->BindAction(InputDataAsset->InputMove, ETriggerEvent::Canceled, this, &AMarksmanCharacter::MoveCompletedAction);
 	PEI->BindAction(InputDataAsset->InputMove, ETriggerEvent::Started, this, &AMarksmanCharacter::MoveStartedAction);
-	PEI->BindAction(InputDataAsset->InputJump, ETriggerEvent::Triggered, this, &AMarksmanCharacter::JumpAction);
+}
+
+// Called every frame
+void AMarksmanCharacter::Tick(float DeltaTime)
+{
+    Super::Tick(DeltaTime);
+
+    FVector Velocity = GetVelocity();
+    Velocity.Z = 0.f;
+
+    if (MoveStarted)
+    {
+        MoveElapsedSeconds += DeltaTime;
+    }
+
+    float SpeedMultiplier = IsSprinting ? 2.5f : 1.f;
+    float InterpolatedSpeed = FMath::Lerp(Velocity.Size(), MaxWalkSpeed * SpeedMultiplier, InterpolationSpeed * DeltaTime);
+    CharacterMovementComponent->MaxWalkSpeed = InterpolatedSpeed;
+    /*
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(
+            -1,
+            2,
+            FColor::Yellow,
+            FString::Printf(TEXT("Speed %f"), InterpolatedSpeed)
+        );
+    }
+    */
 }
 
 void AMarksmanCharacter::MoveAction(const FInputActionValue& Value) 
 {
-	if (!PlayerController)
-	{
-		return;
-	}
+    if (!PlayerController)
+    {
+        return;
+    }
 
-	bool IsMove = Value.Get<bool>();
+    bool IsMove = Value.Get<bool>();
 	FHitResult TraceHitResult;
-	if (IsMove &&
-		PlayerController->GetHitResultUnderCursor(ECC_Visibility, true, TraceHitResult))
-	{
-		LastClickedLocation = TraceHitResult.Location;
-		FVector WorldDirection = (LastClickedLocation - GetActorLocation()).GetSafeNormal();
-		APawn::AddMovementInput(WorldDirection);
-	}
+
+    if (IsMove &&
+        PlayerController->GetHitResultUnderCursor(ECC_Visibility, true, TraceHitResult))
+    {
+        // Trace to the ground to get the exact point clicked
+        if (UNavigationSystemV1::GetCurrent(GetWorld()) != nullptr)
+        {
+            FNavLocation NavLocation;
+            if (UNavigationSystemV1::GetCurrent(GetWorld())->ProjectPointToNavigation(TraceHitResult.Location, NavLocation))
+            {
+                MoveStarted = true;
+				LastClickedLocation = NavLocation.Location;
+                /*
+                if (GEngine)
+                {
+                    GEngine->AddOnScreenDebugMessage(
+                        -1,
+                        2,
+                        FColor::Yellow,
+                        FString::Printf(TEXT("Elapsed Seconds %f"), MoveElapsedSeconds)
+                    );
+                }
+                */
+                if (MoveElapsedSeconds > 0.1f)
+                {
+                    IsSprinting = true;
+                    // Set the character to move towards that point
+                    FVector Direction = (LastClickedLocation - GetActorLocation()).GetSafeNormal();
+                    APawn::AddMovementInput(Direction);
+
+                    // Set the character to rotate towards the mouse position
+                    FRotator Rot = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), LastClickedLocation);
+                    SetActorRotation(FRotator(0.f, Rot.Yaw, 0.f));
+                }
+            }
+        }
+
+    }
 }
 
 void AMarksmanCharacter::MoveStartedAction(const FInputActionValue& Value)
 {
-	if (!PlayerController)
-	{
-		return;
-	}
-
-	PlayerController->StopMovement();
+    if (!PlayerController)
+    {
+        return;
+    }
+    PlayerController->StopMovement();
+    // Set the character to move at a constant speed
+    CharacterMovementComponent->MaxWalkSpeed = MaxWalkSpeed;
 }
 
 void AMarksmanCharacter::MoveCompletedAction(const FInputActionValue& Value) 
 {
-	if (!PlayerController)
-	{
-		return;
-	}
+    if (!PlayerController)
+    {
+        return;
+    }
 
-	// Move the player to the last-known-clicked location
-	UAIBlueprintHelperLibrary::SimpleMoveToLocation(PlayerController, LastClickedLocation);
-}
+    IsSprinting = false;
 
-void AMarksmanCharacter::JumpAction(const FInputActionValue& Value)
-{
-	if (!PlayerController)
-	{
-		return;
-	}
+    /*
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(
+            -1,
+            2,
+            FColor::Yellow,
+            FString::Printf(TEXT("Elapsed Seconds End %f"), MoveElapsedSeconds)
+        );
+    }
+    */
+    // Move the player to the last-known-clicked location
+    UAIBlueprintHelperLibrary::SimpleMoveToLocation(PlayerController, LastClickedLocation);
 
-	bool IsJump = Value.Get<bool>();
-	if (IsJump)
-	{
-		ACharacter::Jump();
-	}
+    MoveElapsedSeconds = 0.f;
+    MoveStarted = false;
 }
 
